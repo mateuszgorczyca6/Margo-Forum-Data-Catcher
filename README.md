@@ -16,4 +16,5 @@ Aby samemu zaktualizować plik [test.xlsx](test.xlsx) należy posiadać:
     + requests
     + bs4
 
-Instalacja modułów w Python odbywa się poprzez wpisanie komendy: `pip install <module> ` lub `pip3 install <module>`.
+Instalacja modułów w Python odbywa się poprzez wpisanie komendy: 
+`pip install <module> ` lub `pip3 install <module>`.

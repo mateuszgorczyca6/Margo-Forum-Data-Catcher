@@ -1,40 +1,19 @@
 # Margo Forum Data Catcher
 
-## Changelog
+Margo Forum Data Catcher to program, który pobiera dane z różnych stron (forum margonem)[https://forum.margonem.pl], przerabia je i umieszcza w pliku excel.
 
-### alpha v.0.0.2
+Projekt został stworzony do nauki data-scrappingu.
 
-All Quests (+):
-+ Doświadczenie
-+ Złoto
-+ Punkty honoru
-+ Odblokowane teleporty
-+ Odblokowane sklepy
-+ Denary
-+ Przedmioty
+Dane pobierane są aktualnie z:
++ [ABC Questów](https://forum.margonem.pl/?task=forum&show=posts&id=453382)
 
-All Quests (~):
-+ Questy są sortowane wg. poziomu
+Aby zobacyzć log zmian gry wejdź do pliku [CHANGELOG.md](CHANGELOG.md).
 
-Fixes:
-+ [001] Dodano Hero Questy
-+ [003] Lvl jest liczbą
-+ [004] Wstrzymane Zadania nie są ładowane
+Aby samemu zaktualizować plik [test.xlsx](test.xlsx) należy posiadać:
++ Python 3.x ([download link](https://www.python.org/downloads/))
++ moduły:
+    + pandas
+    + requests
+    + bs4
 
-Issues:
-+ [006] Teleport do Thuzal nie jest czytany automatycznie
-+ [007] Przedmioty źle napisane nie są ładowane
-
-### alpha v.0.0.1
-
-All Quests (+):
-+ Nazwa 
-+ Misto początkowe
-+ Potrzebny lvl
-
-Issues
-+ [001] Hero Questy nie są ładowane
-+ [002] Smocze Questy nie są ładowne automatycznie
-+ [003] Lvl jest napisem, a nie liczbą
-+ [004] Wstrzymane Zadania są ładowane
-+ [005] Kilka questów nie jest czytanych automatycznie
+Instalacja modułów w Python odbywa się poprzez wpisanie komendy: `pip install <module> ` lub `pip3 install <module>`.

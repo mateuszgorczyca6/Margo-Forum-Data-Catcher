@@ -3,6 +3,8 @@ import requests
 from bs4 import BeautifulSoup as BS
 from text_edit import *
 
+
+
 def connect(url: str):
     r = requests.get(url)
     if r.status_code != 200:
@@ -10,7 +12,10 @@ def connect(url: str):
     soup = BS(r.text, parser = "html.parser", features="lxml")
     return soup
 
-def get_all_quests_with_rewards(soup):
+def get_all_quests_with_rewards(soup, writer, settings):
+    old_Q = pd.read_excel("test.xlsx", "Q")
+    old_Q_byquest = old_Q.set_index("Nazwa")
+
     banned_td_headers = [
         "Jak szukać potrzebnego questa skutecznie?",
         "Spis treści",
@@ -21,6 +26,9 @@ def get_all_quests_with_rewards(soup):
         "~~Spis solucji filmowych byKfighter~~(ok 80 opisów Questów)"
     ]
     hero_quests_td_header = "Hero Questy [dla każdej profesji] (60 lvl) – 5/6 questów - w różnych lokacjach"
+    
+    td_header_before_dragon_quest = "Mythar i okolice"
+
     banned_names = [
         "Po wykonaniu Serii zadań początkowych u Grambera możemy kontynuować dalej drogę bohatera.",
         "UWAGA!:"
@@ -29,17 +37,8 @@ def get_all_quests_with_rewards(soup):
         "Karka-han --- 22.Pomóż Tyweltowi rozwiązać jego problem 76 lvl)": [
             "76", "Pomóż Tyweltowi rozwiązać jego problem"
         ],
-        "Kwieciste Przejście --- 1.": [
-            "135", "Pomóż Tunii w zdobyciu goblińskich przedmiotów"
-        ],
-        "Kwieciste Przejście --- 2.": [
-            "140", "Tygrys Tunii zgubił zaczarowaną obrożę"
-        ],
-        "Orcza Wyżyna --- 1.": [
-            "141", "Goblińskie kopalnie stoją na skraju upadku"
-        ],
-        "Mirvenis-Adur --- 7. ": [
-            "160", "Kowal Jaki chce stworzyć niezwykłą tarczę"
+        "Smocze Góry --- Smocze zadania są możliwe do wykonania w kolejności wg poziomów.": [
+            "100", "Łapówka dla smoka umożliwiająca wykonywanie questów z nim"
         ]
     }
     broken_city_names = [
@@ -51,14 +50,6 @@ def get_all_quests_with_rewards(soup):
         "Przedmieścia Karka-han",
         "Nekropolia Karka-han",
         "Hero Questy [dla każdej profesji] (60 lvl) – 5/6 questów - w różnych lokacjach"
-    ]
-    smocze_questy = [
-        ["100", "Łapówka dla smoka umożliwiająca wykonywanie questów z nim"],
-        ["100", "Pomóż smokowi obliczyć wartość jego skarbów na ludzki sposób"],
-        ["102", "Odnajdź ukochaną zaklętego boga"],
-        ["104", "Sprawdź dar, jaki smok otrzymał od pewnego kupca"],
-        ["106", "Smok jest głodny i zjadłby coś nowego"],
-        ["108", "Smokowi Introprodarowi odpada łuska z pancerza"],
     ]
     armor_types = [
         "Jednoręczne", "Dwuręczne", "Półtoraręczne", "Dystansowe", "Pomocnicze", 
@@ -96,9 +87,16 @@ def get_all_quests_with_rewards(soup):
 
 
     quests = pd.DataFrame(columns=[
-        "Lvl", "Miejsce", "Nazwa", "Nagroda", "Exp", "Gold", "PH", "Denary", "TP", "Sklep", "Items"
+        "*", "Lvl", "Miejsce", "Nazwa", "Exp", "Gold", "PH", "Denary", "TP", "Sklep",
+        "Zbroje (*)", "Błoga", "Teleporty", "Klucze", "Talizmany", "Torby", "Other Items"
     ])
+
+    interesting_quests = pd.DataFrame(columns=[
+        "Lvl", "Miejsce", "Miejsce (*)", "Nazwa", "Czemu warto?", "Pozostałe benefity"
+    ])
+
     i = 0
+    i_interest = 0
     for td in soup.find_all("td", {"class": "pcont", }):
         # checking if header exists and if it contains quest or is quest container
         td_inside = td.find("blockquote")
@@ -121,9 +119,17 @@ def get_all_quests_with_rewards(soup):
             if td_header == hero_quests_td_header:
                 td_inside = td.find_all("blockquote")[1]
                 heroQ = True
-                print("HERO")
+            
+            # Smocze Questy
+            dragonQ = False
+            if td_header == td_header_before_dragon_quest:
+                td_inside = td.find_all("blockquote",recursive=False)
+                dragonQ = True
 
-            if quest_block and not heroQ:
+            if dragonQ:
+                blockquotes = td_inside[0].find_all("blockquote")
+                blockquotes.extend(td_inside[1].find_all("blockquote"))
+            elif quest_block and not heroQ:
                 blockquotes = td.find_all("blockquote", recursive=False)
             else:
                 blockquotes = td_inside.find_all("blockquote", recursive=False)
@@ -140,18 +146,18 @@ def get_all_quests_with_rewards(soup):
                 else:
                     # hero questy
                     if heroQ:
-                        print(blockquote.text.strip()[:5])
                         if not blockquote.text.strip()[:5] == "Quest": continue
                         lvl = 60
                         title = td_inside.find("b").text + " - " + blockquote.find("b").text
                         city = "Hero Quest"
-                        print(lvl, city, title)
 
                     else:
                         bs = blockquote.find_all("b")
                         
                         # reading lvl and title from blockquote
                         quest_name = bs[0].text
+                        if len(quest_name) < 5:
+                            quest_name = bs[0].text + blockquote.find("u").text + bs[1].text
                         if city + " --- " + quest_name in exceptions_names.keys():
                             lvl, title = exceptions_names[city + " --- " + quest_name]
                         else:
@@ -181,6 +187,7 @@ def get_all_quests_with_rewards(soup):
                     if nagroda_idx < 0:
                         nagroda_idx = 100
                     nagroda = blockquote.text[nagroda_idx + 8:].strip().replace("Otrzymano ", "")
+                    nagroda = nagroda.split("punktowa")[0]
 
                     # exp
                     exp, _ = number_before(nagroda, " punktów doświadczenia")
@@ -210,6 +217,7 @@ def get_all_quests_with_rewards(soup):
                             gold, _ = number_before(nagroda, " złota")
                     if gold == "0":
                         gold, _ = number_after(nagroda, "Złoto:")
+
                     gold = int(gold)
 
                     # PH
@@ -271,12 +279,20 @@ def get_all_quests_with_rewards(soup):
                     if heroQ:
                         nagroda_idx = 0
 
-                    nagroda = BS(str(blockquote)[nagroda_idx:], "html.parser")
+                    nagroda = BS(str(blockquote)[nagroda_idx:].split("punktowa")[0], "html.parser")
 
 
                     # itemy
                     items = nagroda.find_all("div", {"class": "itemborder"})
                     all_items = []
+                    items_rare_armors = []
+                    items_blogos = []
+                    items_teleports = []
+                    items_keys = []
+                    items_talizmans = []
+                    items_bags = []
+                    items_other = []
+
                     for item in items:
                         stats = item.find("img")["stats"]
                         i_name = stats.split("|")[0].strip()
@@ -290,22 +306,27 @@ def get_all_quests_with_rewards(soup):
                         if "fullheal" in stats:
                             i_HP = stats.split("fullheal=")[1].split("<")[0].split("|")[0].split(";")[0]
                             all_items.append(i_name + ": Mix(Full) [" + i_HP + "]")
+                            items_other.append(i_name + ": Mix(Full) [" + i_HP + "]")
 
                         elif "leczy=" in stats:
                             i_HP = stats.split("leczy=")[1].split("<")[0].split("|")[0].split(";")[0]
                             if "amount" in stats:
                                 i_amount = stats.split("amount=")[1].split("<")[0].split("|")[0].split(";")[0]
                                 all_items.append(i_amount + " x " + i_name + ": Mix [" + str(int(i_amount) * int(i_HP)) + "]")
+                                items_other.append(i_amount + " x " + i_name + ": Mix [" + str(int(i_amount) * int(i_HP)) + "]")
                             else:
                                 all_items.append(i_name + ": Mix [" + i_HP + "]")
+                                items_other.append(i_name + ": Mix [" + i_HP + "]")
                         
                         elif "perheal" in stats:
                             i_HP = stats.split("perheal=")[1].split("<")[0].split("|")[0].split(";")[0]
                             if "amount" in stats:
                                 i_amount = stats.split("amount=")[1].split("<")[0].split("|")[0].split(";")[0]
                                 all_items.append(i_amount + " x " + i_name + ": Mix [" + i_HP + "%]")
+                                items_other.append(i_amount + " x " + i_name + ": Mix [" + i_HP + "%]")
                             else:
                                 all_items.append(i_name + ": Mix [" + i_HP + "%]")
+                                items_other.append(i_name + ": Mix [" + i_HP + "%]")
 
                         # armor i błogo
                         elif i_type in [*armor_types, "Błogosławieństwa"]:
@@ -326,8 +347,20 @@ def get_all_quests_with_rewards(soup):
                             if i_type == "Strzały":
                                 i_amount = stats.split("ammo=")[1].split("<")[0].split("|")[0].split(";")[0]
                                 all_items.append(i_amount + " x " + i_name + ": " + i_type + i_rarity + " [" + i_prof + "]")
+                                items_other.append(i_amount + " x " + i_name + ": " + i_type + i_rarity + " [" + i_prof + "]")
+                            elif i_type == "Błogo":
+                                if "amount" in stats:
+                                    i_amount = stats.split("amount=")[1].split("<")[0].split("|")[0].split(";")[0]
+                                else:
+                                    i_amount = "1"
+                                all_items.append(i_amount + " x " + i_name + ": " + i_type + i_rarity + " [" + i_prof + "]")
+                                items_blogos.append(i_amount + " x " + i_name + ": " + i_type + i_rarity + " [" + i_prof + "]")
                             else:
                                 all_items.append(i_name + ": " + i_type + i_rarity + " [" + i_prof + "]")
+                                if not i_rarity == "":
+                                    items_rare_armors.append(i_name + ": " + i_type + i_rarity + " [" + i_prof + "]")
+                                else:
+                                    items_other.append(i_name + ": " + i_type + i_rarity + " [" + i_prof + "]")
 
                         # teleport
                         elif "teleport=" in stats:
@@ -340,8 +373,10 @@ def get_all_quests_with_rewards(soup):
                                     except:
                                         pass
                                 all_items.append(i_amount + " x " + i_name + ": " + "TP [" + i_tp + "]")
+                                items_teleports.append(i_amount + " x " + i_name + ": " + "TP [" + i_tp + "]")
                             else:
                                 all_items.append(i_name + ": " + "TP [" + i_tp + "]")
+                                items_teleports.append(i_name + ": " + "TP [" + i_tp + "]")
                         
                         # złoto
                         elif i_type == "Złoto":
@@ -356,6 +391,7 @@ def get_all_quests_with_rewards(soup):
                             except:
                                 i_place = i_name
                             all_items.append(i_name + ": " + "Klucz [" + i_place + "]")
+                            items_keys.append(i_name + ": " + "Klucz [" + i_place + "]")
 
                         # talizmany
                         elif i_type == "Talizmany":
@@ -381,38 +417,81 @@ def get_all_quests_with_rewards(soup):
                                 text += "leczy: " + i_heal_amount + ", szansa: " + i_heal_chance + "%"
                             text += "]"
                             all_items.append(text)
+                            items_talizmans.append(text)
 
                         # torby
                         elif i_type == "Torby":
                             i_bag = stats.split("bag=")[1].split("<")[0].split("|")[0].split(";")[0].strip()
                             if "btype=18" in stats:
                                 all_items.append(i_name + ": " + "Torba [" + i_bag + ", klucze]")
+                                items_bags.append(i_name + ": " + "Torba [" + i_bag + ", klucze]")
                             else:
                                 all_items.append(i_name + ": " + "Torba [" + i_bag + "]")
+                                items_bags.append(i_name + ": " + "Torba [" + i_bag + "]")
 
                         # pozostałe
                         else:
                             all_items.append(i_name)
+                            items_other.append(i_name)
 
                     # nieznane itemy
                     broken_items = get_indexes_of(nagroda_txt, "ITEM#")
                     for idx in broken_items:
                         txt = nagroda_txt[idx:]
                         all_items.append(txt.split(".")[0])
+                        items_other.append(txt.split(".")[0])
+
+                    interesting_items = [*items_rare_armors, *items_blogos, *items_teleports, *items_keys, *items_talizmans, *items_bags]
+                    other_items = items_other[:]
                     
                     all_items = "; ".join(all_items)
+                    items_rare_armors = "; ".join(items_rare_armors)
+                    items_blogos = "; ".join(items_blogos)
+                    items_teleports = "; ".join(items_teleports)
+                    items_keys = "; ".join(items_keys)
+                    items_talizmans = "; ".join(items_talizmans)
+                    items_bags = "; ".join(items_bags)
+                    items_other = "; ".join(items_other)
 
+                    # god reward marker
+                    interesting = False
+                    if not all_items == items_other or denary > 0 or not TP is None or not sklep is None:
+                        interesting = True
+                    
                     if not title in banned_names:
-                        quests.loc[i] = [lvl, city, title, nagroda, exp, gold, PH, denary, TP, sklep, all_items]
+                        quests.loc[i] = [{True: "*", False: ""}[interesting], lvl, city, title, exp, gold, PH, denary, TP, sklep,
+                        items_rare_armors, items_blogos, items_teleports, items_keys, items_talizmans, items_bags, items_other]
                         i += 1
+                        if interesting:
+                            reward_good = []
+                            if denary > 0:
+                                reward_good.append("Denary: " + str(denary) + "; ")
+                            if not sklep is None:
+                                reward_good.append("Sklep: " + sklep + "; ")
+                            if not TP is None:
+                                reward_good.append("TP: " + TP + "; ")
+                            reward_good.extend(interesting_items)
+                            reward_good = "; ".join(reward_good)
 
-    city = "Smocze Góry"
-    for quest in smocze_questy:
-        lvl, title = quest
-        quests.loc[i] = [int(lvl), city, title, None, None, None, None, None, None, None, None]
-        i += 1
-    
+                            reward_other = []
+                            if exp > 0:
+                                reward_other.append("Exp: " + str(exp) + " ")
+                            if gold > 0:
+                                reward_other.append("Gold: " + str(gold) + " ")
+                            if PH > 0:
+                                reward_other.append("PH: " + str(PH) + " ")
+                            reward_other.extend(other_items)
+                            reward_other = "; ".join(reward_other)
+                            
+                            interesting_quests.loc[i_interest] = [
+                                lvl, city, old_Q_byquest["Miejsce (*)"][title], title, reward_good, reward_other
+                            ]
+                            i_interest += 1
+
     quests = quests.sort_values("Nazwa").sort_values("Miejsce").sort_values("Lvl")
+    interesting_quests = interesting_quests.sort_values("Nazwa").sort_values("Miejsce").sort_values("Lvl")
 
-    print(quests)
-    quests.to_excel("test.xlsx", "All Q", index=False)
+    
+    quests.to_excel(writer, "All Q", index=False)
+    interesting_quests.to_excel(writer, "Q", index=False)
+    print("--- ZAKOŃCZONO ---")

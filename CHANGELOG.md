@@ -1,5 +1,15 @@
 # Changelog
 
+## alpha v.0.0.3
+
+All Quests (~):
++ Items are divided on types when important type
++ Added good reward marker
+
+Fixes:
++ [002] Smocze Questy są ładowne automatycznie
++ [005] Questy z podkreśleniem są czytane poprawnie
+
 ## alpha v.0.0.2
 
 All Quests (+):

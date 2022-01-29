@@ -204,6 +204,14 @@ def get_all_quests_with_rewards(soup, writer):
                         exp, _ = number_before(nagroda, " exp")
                     exp = int(exp)
 
+                    if 160 <= lvl <= 162 and 100 < exp < 1000:
+                        if exp == 698:
+                            exp = 4480698
+                        elif exp == 872:
+                            exp = 5600872
+                        elif exp == 837:
+                            exp = 4551837
+
                     # gold
                     gold, _ = number_before(nagroda, " sztuk złotychmonet")
                     if gold == "0":

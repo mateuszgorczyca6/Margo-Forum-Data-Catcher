@@ -36,21 +36,22 @@ def extract_from_name(text):
             city = city.split("+")[0].strip()
         return lvl, city, title
 
+
 def number_before(text, search_text):
-    text = text.replace(" mln", "m").replace("mln", "m").replace("mm","m").replace(" m","m")
+    text = text.replace(" mln", "m").replace("mln", "m").replace("mm", "m").replace(" m", "m")
 
     cut_idx = text.find(search_text)
-        
+
     if cut_idx < 0:
         return "0", text
 
     val = "0"
     i = 1
-    while val.replace(",",".").replace(".","").isdigit():
-        if cut_idx-i < 0:
-            return val.lstrip("."), text[cut_idx+len(search_text):]
+    while val.replace(",", ".").replace(".", "").isdigit():
+        if cut_idx - i < 0:
+            return val.lstrip("."), text[cut_idx + len(search_text):]
 
-        val = text[cut_idx-i:cut_idx]
+        val = text[cut_idx - i:cut_idx]
 
         if val in ["k", "m"]:
             mnoznik = {
@@ -60,22 +61,23 @@ def number_before(text, search_text):
             if val == "0":
                 return val.lstrip("."), text
             else:
-                val = str(float(val.replace(",",".")) * mnoznik).split(".")[0]
+                val = str(float(val.replace(",", ".")) * mnoznik).split(".")[0]
                 return val.lstrip("."), text
 
         i += 1
     if not val == "0":
-        rest1 = text[:cut_idx-i+2]
-        rest2 = text[cut_idx+len(search_text):]
+        rest1 = text[:cut_idx - i + 2]
+        rest2 = text[cut_idx + len(search_text):]
         return val[1:].lstrip("."), rest1 + rest2
-    
+
     return val, text
 
+
 def number_after(text, search_text):
-    text = text.replace(" mln", "m").replace("mln", "m").replace("mm","m").replace(" m","m")
+    text = text.replace(" mln", "m").replace("mln", "m").replace("mm", "m").replace(" m", "m")
 
     cut_idx = text.find(search_text)
-        
+
     if cut_idx < 0:
         return "0", text
     else:
@@ -83,27 +85,27 @@ def number_after(text, search_text):
 
     val = "0"
     i = 1
-    while val.replace(",",".").replace(".","").isdigit():
-        if cut_idx+i > len(text):
-            return val, text[:cut_idx+len(search_text)]
+    while val.replace(",", ".").replace(".", "").isdigit():
+        if cut_idx + i > len(text):
+            return val, text[:cut_idx + len(search_text)]
 
-        val = text[cut_idx:cut_idx+i]
+        val = text[cut_idx:cut_idx + i]
 
         if val[-1] in ["k", "m"]:
             mnoznik = {
                 "k": 1000, "m": 1000000
             }[val[-1]]
             val = val[:-1]
-            val = str(float(val.replace(",",".")) * mnoznik).split(".")[0]
+            val = str(float(val.replace(",", ".")) * mnoznik).split(".")[0]
             return val, text
 
         i += 1
 
     if not val == "0":
         return val[:-1], text
-    
+
     return val, text
-    
+
 
 def find_next_word(text, search_text):
     val_idx = text.find(search_text)
@@ -115,11 +117,12 @@ def find_next_word(text, search_text):
         val = None
     return val, text
 
+
 def get_indexes_of(text, search_text):
     n = text.count(search_text)
     idx = -1
     idxs = []
     for i in range(n):
-        idx = text.find(search_text, idx+len(search_text))
+        idx = text.find(search_text, idx + len(search_text))
         idxs.append(idx)
     return idxs
